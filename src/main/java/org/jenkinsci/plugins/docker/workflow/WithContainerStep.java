@@ -74,16 +74,17 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class WithContainerStep extends AbstractStepImpl {
-    
+
     private static final Logger LOGGER = Logger.getLogger(WithContainerStep.class.getName());
     private final @Nonnull String image;
     private String args;
     private String toolName;
+    private int removeTimeout;
 
     @DataBoundConstructor public WithContainerStep(@Nonnull String image) {
         this.image = image;
     }
-    
+
     public String getImage() {
         return image;
     }
@@ -105,8 +106,17 @@ public class WithContainerStep extends AbstractStepImpl {
         this.toolName = Util.fixEmpty(toolName);
     }
 
-    private static void destroy(String container, Launcher launcher, Node node, EnvVars launcherEnv, String toolName) throws Exception {
-        new DockerClient(launcher, node, toolName).stop(launcherEnv, container);
+    @DataBoundSetter
+    public void setRemoveTimeout(int removeTimeout) {
+        this.removeTimeout = removeTimeout;
+    }
+
+    public int getRemoveTimeout() {
+        return removeTimeout;
+    }
+
+    private static void destroy(String container, Launcher launcher, Node node, EnvVars launcherEnv, String toolName, int removeTimeout) throws Exception {
+        new DockerClient(launcher, node, toolName).stop(launcherEnv, container, removeTimeout);
     }
 
     // TODO switch to GeneralNonBlockingStepExecution
@@ -123,6 +133,7 @@ public class WithContainerStep extends AbstractStepImpl {
         @StepContextParameter private transient Run run;
         private String container;
         private String toolName;
+        private int removeTimeout;
 
         public Execution() {
         }
@@ -140,6 +151,7 @@ public class WithContainerStep extends AbstractStepImpl {
             workspace.mkdirs(); // otherwise it may be owned by root when created for -v
             String ws = getPath(workspace);
             toolName = step.toolName;
+            removeTimeout = step.removeTimeout;
             DockerClient dockerClient = launcher.isUnix()
                 ? new DockerClient(launcher, node, toolName)
                 : new WindowsDockerClient(launcher, node, toolName);
@@ -208,7 +220,7 @@ public class WithContainerStep extends AbstractStepImpl {
             ImageAction.add(step.image, run);
             getContext().newBodyInvoker().
                     withContext(BodyInvoker.mergeLauncherDecorators(getContext().get(LauncherDecorator.class), new Decorator(container, envHost, ws, toolName, dockerVersion))).
-                    withCallback(new Callback(container, toolName)).
+                    withCallback(new Callback(container, toolName, removeTimeout)).
                     start();
             return false;
         }
@@ -230,7 +242,7 @@ public class WithContainerStep extends AbstractStepImpl {
         @Override public void stop(@Nonnull Throwable cause) throws Exception {
             if (container != null) {
                 LOGGER.log(Level.FINE, "stopping container " + container, cause);
-                destroy(container, launcher, getContext().get(Node.class), env, toolName);
+                destroy(container, launcher, getContext().get(Node.class), env, toolName, removeTimeout);
             }
         }
 
@@ -381,14 +393,16 @@ public class WithContainerStep extends AbstractStepImpl {
         private static final long serialVersionUID = 1;
         private final String container;
         private final String toolName;
+        private final int removeTimeout;
 
-        Callback(String container, String toolName) {
+        Callback(String container, String toolName, int removeTimeout) {
             this.container = container;
             this.toolName = toolName;
+            this.removeTimeout = removeTimeout;
         }
 
         @Override protected void finished(StepContext context) throws Exception {
-            destroy(container, context.get(Launcher.class), context.get(Node.class), context.get(EnvVars.class), toolName);
+            destroy(container, context.get(Launcher.class), context.get(Node.class), context.get(EnvVars.class), toolName, removeTimeout);
         }
 
     }

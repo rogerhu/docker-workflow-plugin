@@ -43,7 +43,7 @@ import java.util.Collections;
 public class DockerClientTest {
 
     private DockerClient dockerClient;
-    
+
     @Before
     public void setup() throws Exception {
         DockerTestUtil.assumeDocker();
@@ -71,7 +71,7 @@ public class DockerClientTest {
 
         // Also test that the stop works and cleans up after itself
         Assert.assertNotNull(dockerClient.inspect(launchEnv, containerId, ".Name"));
-        dockerClient.stop(launchEnv, containerId);
+        dockerClient.stop(launchEnv, containerId, 180);
         Assert.assertNull(dockerClient.inspect(launchEnv, containerId, ".Name"));
     }
 
@@ -82,7 +82,7 @@ public class DockerClientTest {
         Assert.assertFalse(dockerVersion.isOlderThan(new VersionNumber("1.5")));
         Assert.assertTrue(dockerVersion.isOlderThan(new VersionNumber("1.10")));
     }
-    
+
     @Test
     public void test_invalid_version() {
         Assert.assertNull(DockerClient.parseVersionNumber("xxx"));

@@ -95,11 +95,13 @@ class Docker implements Serializable {
         private final Docker docker;
         public final String id;
         private ImageNameTokens parsedId;
+        private int removeTimeout;
 
         private Image(Docker docker, String id) {
             this.docker = docker
             this.id = id
             this.parsedId = new ImageNameTokens(id)
+            this.removeTimeout = 180
         }
 
         private String toQualifiedImageName(String imageName) {
@@ -108,6 +110,10 @@ class Docker implements Serializable {
 
         public String imageName() {
             return toQualifiedImageName(id)
+        }
+
+        public void setRemoveTimeout(int removeTimeout) {
+            this.removeTimeout = removeTimeout
         }
 
         public <V> V inside(String args = '', Closure<V> body) {
@@ -123,7 +129,7 @@ class Docker implements Serializable {
                         pull()
                     }
                 }
-                docker.script.withDockerContainer(image: toRun, args: args, toolName: docker.script.env.DOCKER_TOOL_NAME) {
+                docker.script.withDockerContainer(image: toRun, args: args, toolName: docker.script.env.DOCKER_TOOL_NAME, removeTimeout: removeTimeout) {
                     body()
                 }
             }

@@ -51,7 +51,7 @@ public class WindowsDockerClientTest {
 
         // Also test that the stop works and cleans up after itself
         Assert.assertNotNull(dockerClient.inspect(launchEnv, containerId, ".Name"));
-        dockerClient.stop(launchEnv, containerId);
+        dockerClient.stop(launchEnv, containerId, 180);
         Assert.assertNull(dockerClient.inspect(launchEnv, containerId, ".Name"));
     }
 }
